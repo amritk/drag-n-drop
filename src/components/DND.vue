@@ -1,17 +1,7 @@
 <script setup lang="ts">
 import { useThrottleFn } from "@vueuse/core";
 import { computed, ref } from "vue";
-
-export type Item = {
-  id: number;
-  name: string;
-  children: Item[];
-};
-
-export type Hovered = {
-  id: number;
-  offset: number;
-} | null;
+import { type Hovered, type Item, dataTransferTypes } from "../libs";
 
 const height = 50 + 8;
 
@@ -33,19 +23,33 @@ const dragStart = (evt: DragEvent) => {
   evt.target.classList.add("dragging");
   evt.dataTransfer.dropEffect = "move";
   evt.dataTransfer.effectAllowed = "move";
-  evt.dataTransfer.setData(props.item.id + "", props.item.id + "");
+  evt.dataTransfer.setData(
+    props.item.id + "-" + props.indices,
+    props.item.id + "-" + props.indices,
+  );
 };
 
-const dragOver = useThrottleFn((ev) => {
+const dragOver = useThrottleFn((evt: DragEvent) => {
   let offset = -1;
+  if (!evt.dataTransfer || !(evt.target instanceof HTMLDivElement)) return;
 
-  const sourceId = parseInt(ev.dataTransfer.types[0]);
+  const { sourceId, sourceIndices } = dataTransferTypes(
+    evt.dataTransfer.types[0],
+  );
+
+  // Prevent hovering over itself
   if (sourceId === props.item.id) return;
 
-  if (ev.offsetY < 0.2 * height) {
+  // Prevent from hovering over its own children
+  const isChildOfSelf = sourceIndices.every(
+    (sourceIndex, index) => sourceIndex === props.indices[index],
+  );
+  if (isChildOfSelf) return;
+
+  if (evt.offsetY < 0.2 * height) {
     position.value = "top";
     offset = 0;
-  } else if (ev.offsetY > 0.8 * height) {
+  } else if (evt.offsetY > 0.8 * height) {
     position.value = "bottom";
     offset = 1;
   } else {
@@ -64,13 +68,13 @@ const continerClass = computed(() => {
 </script>
 
 <template>
-  <div :class="continerClass">
-    <div
-      class="inner"
-      @dragover.prevent="dragOver"
-      @dragstart="dragStart"
-      draggable="true"
-    >
+  <div
+    :class="continerClass"
+    @dragstart="dragStart"
+    draggable="true"
+    @dragover.prevent
+  >
+    <div class="inner" @dragover.prevent="dragOver">
       #{{ item.id }}. {{ item.name }}
     </div>
 

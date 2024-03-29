@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import DND, { type Item, type Hovered } from ".//DND.vue";
+import DND from "./DND.vue";
+import { dataTransferTypes, type Item, type Hovered } from "../libs";
 
 const items = ref([
   {
@@ -67,17 +68,18 @@ const traverseArray = (
 
 const onDrop = (ev: DragEvent) => {
   ev.preventDefault();
+  document
+    .querySelectorAll("div.dragging")
+    .forEach((el) => el.classList.remove("dragging"));
+
   if (!hovered.value || !ev.dataTransfer?.types?.[0]) return;
 
-  const sourceId = parseInt(ev.dataTransfer.types[0]);
+  const { sourceId } = dataTransferTypes(ev.dataTransfer.types[0]);
   const targetId = hovered.value.id;
   const offset = hovered.value.offset;
 
   // Remove hover
   hovered.value = null;
-  document
-    .querySelectorAll("div.dragging")
-    .forEach((el) => el.classList.remove("dragging"));
 
   if (sourceId === targetId) return;
 
