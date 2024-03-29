@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import DND, { type Hovered } from "./components/DND.vue";
+import DND, { type Item, type Hovered } from "./components/DND.vue";
 
 const items = ref([
   {
@@ -27,16 +27,63 @@ const items = ref([
 
 const hovered = ref<Hovered>(null);
 
+/**
+ * Scroll through the children recursively and remove the item
+ * If an item and offset are provided then it adds to the array
+ * or children, otherwise it will "pop" the item
+ *
+ * This can definitely be improved for perf
+ */
+const traverseArray = (
+  arr: Item[],
+  id: number,
+  itemToAdd?: Item,
+  offset?: number,
+): Item | null => {
+  for (let index = 0; index < arr.length; index++) {
+    const item = arr[index];
+
+    if (item.id === id) {
+      // Add item
+      if (itemToAdd) {
+        if (offset === -1) item.children.push(itemToAdd);
+        else arr.splice(index + (offset ?? 0), 0, itemToAdd);
+
+        return itemToAdd;
+      }
+      // Remove item
+      else {
+        const [removedItem] = arr.splice(index, 1);
+        return removedItem;
+      }
+    } else if (item.children.length) {
+      const returnedItem = traverseArray(item.children, id, itemToAdd, offset);
+      if (returnedItem) return returnedItem;
+    }
+  }
+
+  return null;
+};
+
 const onDrop = (ev: DragEvent) => {
   ev.preventDefault();
   if (!hovered.value || !ev.dataTransfer?.types?.[0]) return;
 
-  const sourceIndices = ev.dataTransfer.types[0].split(",");
-  console.log(hovered.value.id);
-  console.log(sourceIndices);
-  console.log(hovered.value.indices);
-  console.log(hovered.value.offset);
+  const sourceId = parseInt(ev.dataTransfer.types[0]);
+  const targetId = hovered.value.id;
+  const offset = hovered.value.offset;
+
+  // Remove hover
   hovered.value = null;
+  document
+    .querySelectorAll("div.dragging")
+    .forEach((el) => el.classList.remove("dragging"));
+
+  if (sourceId === targetId) return;
+
+  // Grab and remove source
+  const removedItem = traverseArray(items.value, sourceId);
+  if (removedItem) traverseArray(items.value, targetId, removedItem, offset);
 };
 </script>
 

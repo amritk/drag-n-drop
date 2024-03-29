@@ -2,7 +2,7 @@
 import { useThrottleFn } from "@vueuse/core";
 import { computed, ref } from "vue";
 
-type Item = {
+export type Item = {
   id: number;
   name: string;
   children: Item[];
@@ -10,7 +10,6 @@ type Item = {
 
 export type Hovered = {
   id: number;
-  indices: number[];
   offset: number;
 } | null;
 
@@ -34,22 +33,25 @@ const dragStart = (evt: DragEvent) => {
   evt.target.classList.add("dragging");
   evt.dataTransfer.dropEffect = "move";
   evt.dataTransfer.effectAllowed = "move";
-  evt.dataTransfer.setData(props.indices.join(","), props.indices.join(","));
+  evt.dataTransfer.setData(props.item.id + "", props.item.id + "");
 };
 
 const dragOver = useThrottleFn((ev) => {
-  let offset = 0;
+  let offset = -1;
+
+  const sourceId = parseInt(ev.dataTransfer.types[0]);
+  if (sourceId === props.item.id) return;
 
   if (ev.offsetY < 0.2 * height) {
     position.value = "top";
-    offset = -1;
+    offset = 0;
   } else if (ev.offsetY > 0.8 * height) {
     position.value = "bottom";
     offset = 1;
   } else {
     position.value = "middle";
   }
-  emit("hovered", { id: props.item.id, indices: props.indices, offset });
+  emit("hovered", { id: props.item.id, offset });
 }, 50);
 
 const continerClass = computed(() => {
@@ -65,10 +67,9 @@ const continerClass = computed(() => {
   <div :class="continerClass">
     <div
       class="inner"
-      @dragover="dragOver"
+      @dragover.prevent="dragOver"
       @dragstart="dragStart"
       draggable="true"
-      @dragover.prevent
     >
       #{{ item.id }}. {{ item.name }}
     </div>
@@ -130,6 +131,7 @@ const continerClass = computed(() => {
     justify-content: center;
   }
 }
+
 .dragging {
   opacity: 0.2;
 }
