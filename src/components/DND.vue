@@ -8,44 +8,53 @@ type Item = {
   children: Item[];
 };
 
+export type Hovered = {
+  id: number;
+  indices: number[];
+  offset: number;
+} | null;
+
 const height = 50 + 8;
+
 const props = defineProps<{
-  index: number;
+  indices: number[];
   item: Item;
-  hoveredId: number | null;
+  hovered: Hovered;
 }>();
+
 const emit = defineEmits<{
-  hovered: [id: number];
+  hovered: [h: Hovered];
 }>();
 
 const position = ref<"top" | "middle" | "bottom">("middle");
 
-const dragStart = (ev) => {
-  ev.target.classList.add("dragging");
-  ev.dataTransfer.dropEffect = "move";
-  ev.dataTransfer.effectAllowed = "move";
-  ev.dataTransfer.setData(props.item.id, props.item.id);
+const dragStart = (evt: DragEvent) => {
+  if (!evt.dataTransfer || !(evt.target instanceof HTMLDivElement)) return;
+
+  evt.target.classList.add("dragging");
+  evt.dataTransfer.dropEffect = "move";
+  evt.dataTransfer.effectAllowed = "move";
+  evt.dataTransfer.setData(props.indices.join(","), props.indices.join(","));
 };
 
 const dragOver = useThrottleFn((ev) => {
-  console.log("====== ", props.item.name);
-  console.log(ev.offsetY);
+  let offset = 0;
 
   if (ev.offsetY < 0.2 * height) {
     position.value = "top";
-    emit("hovered", props.item.id);
+    offset = -1;
   } else if (ev.offsetY > 0.8 * height) {
     position.value = "bottom";
-    emit("hovered", props.item.id);
+    offset = 1;
   } else {
     position.value = "middle";
-    emit("hovered", props.item.id);
   }
+  emit("hovered", { id: props.item.id, indices: props.indices, offset });
 }, 50);
 
 const continerClass = computed(() => {
   let classList = "dnd";
-  if (props.item.id === props.hoveredId) {
+  if (props.item.id === props.hovered?.id) {
     classList += ` dragover-${position.value}`;
   }
   return classList;
@@ -66,10 +75,10 @@ const continerClass = computed(() => {
 
     <div class="dnd-child-container" v-if="item.children.length">
       <DND
-        @hovered="(id: number) => $emit('hovered', id)"
-        :hoveredId="hoveredId"
+        @hovered="(h: Hovered) => $emit('hovered', h)"
+        :hovered="hovered"
         v-for="(child, childIndex) in item.children"
-        :index="childIndex"
+        :indices="[...indices, childIndex]"
         :item="child"
         :key="child.id"
       />

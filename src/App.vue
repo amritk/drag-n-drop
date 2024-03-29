@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import DND from "./components/DND.vue";
+import DND, { type Hovered } from "./components/DND.vue";
 
 const items = ref([
   {
@@ -25,13 +25,18 @@ const items = ref([
   { id: 12, name: "Kings", children: [] },
 ]);
 
-const hoveredId = ref<number | null>(null);
+const hovered = ref<Hovered>(null);
 
 const onDrop = (ev: DragEvent) => {
   ev.preventDefault();
-  console.log("dropped", ev);
-  console.log(hoveredId.value);
-  hoveredId.value = null;
+  if (!hovered.value || !ev.dataTransfer?.types?.[0]) return;
+
+  const sourceIndices = ev.dataTransfer.types[0].split(",");
+  console.log(hovered.value.id);
+  console.log(sourceIndices);
+  console.log(hovered.value.indices);
+  console.log(hovered.value.offset);
+  hovered.value = null;
 };
 </script>
 
@@ -43,12 +48,12 @@ const onDrop = (ev: DragEvent) => {
     @drop="onDrop"
   >
     <DND
-      @hovered="(id: number) => (hoveredId = id)"
-      :hoveredId="hoveredId"
+      @hovered="(h: Hovered) => (hovered = h)"
+      :hovered="hovered"
       v-for="(item, index) in items"
       :item="item"
       :key="item.id"
-      :index="index"
+      :indices="[index]"
     />
   </div>
 </template>
